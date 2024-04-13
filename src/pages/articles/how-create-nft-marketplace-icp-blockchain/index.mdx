@@ -1,0 +1,204 @@
+import { ArticleLayout } from '@/components/ArticleLayout'
+import Image from 'next/image'
+
+export const meta = {
+  author: 'Declan Nnadozie',
+  date: '2024-01-30',
+  title: 'How to Create an NFT Marketplace on the Internet Computer (ICP) Blockchain using Rust: A Comprehensive Guide',
+  description:
+    "Unlock the potential of the Internet Computer (ICP) blockchain with our detailed guide on creating an NFT Marketplace. This blog post covers everything from the basics of NFTs, the unique features of ICP blockchain, to step-by-step instructions on setting up your own marketplace. Whether you're a developer, entrepreneur, or a blockchain enthusiast, our expert tips and insights will help you navigate the process with ease. Dive into the world of decentralized digital assets and start building on ICP today!",
+}
+
+export default (props) => <ArticleLayout meta={meta} {...props} />
+
+## Introduction to the Internet Computer (ICP) Blockchain
+The Internet Computer represents a paradigm shift in blockchain technology, poised to revolutionize how we interact with the digital world. Developed by the DFINITY Foundation, it's a groundbreaking platform that extends the functionality of traditional blockchain technology<br/>
+At its core, the Internet Computer is a blockchain hosted on node machines operated by independent parties. These nodes are strategically located in various data centers around the globe, ensuring a robust and decentralized infrastructure. The Internet Computer protocol, a cutting-edge cryptographic fault-tolerant protocol, governs these nodes. This protocol is designed to prevent tampering with or halting of smart contracts running on the blockchain.<br/>
+<a href="https://internetcomputer.org/docs/current/concepts/what-is-ic" target="blank">Learn more</a>
+
+## What is an NFT Marketplace?
+An NFT Marketplace is an online platform where NFTs can be stored, displayed, bought, and sold. Unlike traditional digital marketplaces, NFTs represent ownership of unique items or assets, ranging from digital art and collectibles to virtual real estate and more. Each NFT is distinct, verified on the blockchain, and cannot be replicated, making them highly valuable for digital authenticity and ownership.
+
+## The Importance of NFT Marketplaces
+The rise of NFT marketplaces signifies a paradigm shift in how we perceive value and ownership in the digital realm. These platforms have democratized access to art and collectibles, allowing artists and creators to monetize their work without intermediaries. For collectors and investors, NFT marketplaces offer a new avenue for digital asset investment, with the potential for significant appreciation in value.
+
+## Step-by-Step Tutorial: Building an NFT Marketplace on ICP with Rust
+
+#### Step 1: Write Thread local Data Storage.
+In your lib.rs file, define the market types and thread local storage
+
+```rust
+
+mod types {
+    use candid::{CandidType, Nat};
+    use ic_ledger_types::{AccountIdentifier, Subaccount};
+    use serde::Deserialize;
+
+    #[derive(CandidType)]
+    pub enum MarketError {
+        UnauthorizedOwner,
+        UnauthorizedOperator,
+        OwnerNotFound,
+        OperatorNotFound,
+        TokenNotFound,
+        ExistedNFT,
+        SelfApprove,
+        SelfTransfer,
+        TokenInvalid,
+        UserNotPremium,
+        InsufficientFund,
+        InvalidOperation, // Other(String), // for debugging
+    }
+
+    #[derive(CandidType, Deserialize)]
+    pub struct TransferArgs {
+        pub from_subaccount: Subaccount,
+        pub to: AccountIdentifier,
+        pub amount: Nat,
+        pub fee: Option<Nat>,
+        pub memo: Option<Vec<u8>>,
+        pub created_at_time: Option<Nat>,
+    }
+}
+mod market {
+    use app_core::types::{TokenIdentifier, TokenMetadata};
+    use candid::{CandidType, Deserialize, Nat, Principal};
+    use std::{cell::RefCell, collections::HashMap};
+
+    pub type Price = Nat;
+
+    pub fn with<T, F: FnOnce(&Market) -> T>(f: F) -> T {
+        Market.with(|ledger| f(&ledger.borrow()))
+    }
+
+    pub fn with_mut<T, F: FnOnce(&mut Market) -> T>(f: F) -> T {
+        Market.with(|ledger| f(&mut ledger.borrow_mut()))
+    }
+    
+    // pub fn with_mut<T, F: FnOnce(&mut Market) -> T>(f: F) -> T {
+    //     Market.with(|ledger| f(&mut ledger.borrow_mut()))
+    // }
+    #[derive(CandidType, Deserialize, Clone)]
+    pub struct SellOrder {
+        pub price: Nat,
+        pub prev_owner: Principal,
+        pub token_metadata: TokenMetadata
+    }
+
+    #[derive(CandidType, Default, Deserialize)]
+    pub struct Market {
+        pub sell_orders: HashMap<TokenIdentifier, SellOrder>,
+    }
+
+    thread_local!(
+        static Market: RefCell<Market> = RefCell::new(Market::default());
+    );
+}
+```
+
+#### Step 2: Implement Get Deposit Address.
+This address is used for getting a user-specific address that owned and controlled by the canister. this address is where buyers deposit token to be used to buy NFTs.
+
+Code below,
+```rust
+#[query]
+#[candid_method(query)]
+async fn get_nft_deposit_address() -> String {
+    let caller = caller();
+    let nft_canister =
+        Principal::from_text(NFT_MARKETPLACE_CANISTER_ID).expect("Invalid NFT canister id");
+    let account_id = AccountIdentifier::new(&nft_canister, &Subaccount::from(caller));
+    return account_id.to_hex();
+}
+```
+
+#### Step 3: Implement NFT Buying Logic.
+This function is trying to implement the buying logic of the NFT Marketplace
+
+Code below,
+```rust
+#[update]
+#[candid_method(update)]
+async fn buy(token_id: TokenIdentifier) -> Result<(), MarketError> {
+    let person = caller();
+
+    let icrc_canister =
+        Principal::from_text(ICRC1_CANISTER_ID).expect("Canister Id is invalid");
+    let market_principal = Principal::from_text(NFT_MARKETPLACE_CANISTER_ID).unwrap();
+    let account = AccountIdentifier::new(&market_principal, &Subaccount::from(person));
+    let (user_balance,): (Nat,) = ic_cdk::call(icrc_canister, "icrc1_balance_of", (account,))
+        .await
+        .unwrap();
+    market::with_mut(|market| {
+        if market.sell_orders.contains_key(&token_id) {
+            let order = market
+                .sell_orders
+                .get(&token_id)
+                .ok_or(MarketError::TokenNotFound)?;
+
+            if user_balance >= order.price {
+                let transfer_args = TransferArgs {
+                    from_subaccount: Subaccount::from(person),
+                    to: AccountIdentifier::new(&market_principal, &Subaccount::from(order.prev_owner)),
+                    amount: order.price.clone(),
+                    fee: None,
+                    memo: None,
+                    created_at_time: Some(Nat::from(time()))
+                };
+
+                ic_cdk::spawn(transfer(icrc_canister, transfer_args, token_id.clone()));
+                market.sell_orders.remove(&token_id);
+                // transfer token to owner
+                // transfer nft to person
+                Ok(())
+            } else {
+                Err(MarketError::InsufficientFund)
+            }
+        } else {
+            Err(MarketError::InvalidOperation)
+        }
+    })
+}
+```
+The buy function makes use of a specific token for NFT trading.
+1. It checks if the user has the required amount in the deposit address.
+
+#### Step 4: Sell Logic
+This Logic is used for selling of NFT
+```rust
+#[update]
+#[candid_method(update)]
+async fn sell(token_id: TokenIdentifier, price: Nat) -> Result<(), MarketError> {
+    let resp = check_nft_in_marketplace_address(token_id.clone()).await;
+    let nft_canister_id = Principal::from_str(AUBLISK_NFT_CANISTER_ID).unwrap();
+    let (token_metadata_rslt,):(Result<TokenMetadata, NftError>,) = ic_cdk::call(nft_canister_id, "dip721_token_metadata", (token_id.clone(), )).await.unwrap();
+    let token_metadata = token_metadata_rslt.unwrap();
+    market::with_mut(|market| {
+        if market.sell_orders.contains_key(&token_id) {
+            Err(MarketError::InvalidOperation)
+        } else {
+            if resp {
+                market.sell_orders.insert(
+                    token_id,
+                    SellOrder {price,prev_owner:caller(), token_metadata }
+                );
+                Ok(())
+            } else {
+                Err(MarketError::InvalidOperation)
+            }
+        }
+    })
+}
+
+```
+#### Step 5: List NFTs for sale logic.
+we need a function that lists NFTs on sale.
+code bellow
+```rust
+#[query]
+async fn get_nfts_on_sale() -> Vec<SellOrder> {
+    market::with(|market| {
+        market.sell_orders.values().cloned().collect()
+    })
+}
+```
