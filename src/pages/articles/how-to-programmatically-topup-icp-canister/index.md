@@ -23,7 +23,7 @@ There are times in your business logic, where you would love your canister to au
 dfx new auto_topup
 ```
 
-In the backend subfolder, your cargo.toml should be similar to the below
+In the backend subfolder, your cargo.toml should be similar to the one below
 
 ```toml
 //... other attributes
@@ -37,7 +37,7 @@ serde = "1"
 
 ## Step 2
 
-add a module call types.rs, this module will contain our types
+add a module called types.rs, this module will contain our types
 
 ```rust
 use candid::{CandidType, Deserialize, Nat, Principal};
@@ -66,7 +66,7 @@ pub struct NotifyTopUpArg {
 }
 ```
 
-Your [Lib.rs](http://Lib.rs) should have something similar to this
+Your lib.rs should have something similar to this
 
 ```rust
 use candid::{Nat, Principal};
