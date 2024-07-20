@@ -1,0 +1,152 @@
+import { ArticleLayout } from '@/components/ArticleLayout'
+import Image from 'next/image'
+
+export const meta = {
+  author: 'Declan Nnadozie',
+  date: '2024-07-20',
+  title: 'How to Programmatically topup ICP Canister',
+  description:
+    "Discover how to automatically top up your Internet Computer (ICP) canister with cycles using Rust. This comprehensive guide walks you through creating a self-sustaining canister that can replenish its own cycles when running low. Learn to interact with the NNS Ledger and Cycles Minting canisters, handle ICP transfers, and implement smart cycle management in your decentralized applications. Perfect for ICP developers looking to build more autonomous and efficient smart contracts. Includes step-by-step code examples and explanations for seamless implementation.",
+}
+
+export default (props) => <ArticleLayout meta={meta} {...props} />
+
+# How to topup an ICP Canister Programmatically - Part 1
+
+There are times in your business logic, where you would love your canister to automatically topup itself, maybe use some of its profits, in exchange for cycles. In this Blog i will show you how to do that.
+
+## Step 1.
+
+ You can create a new project with these command
+
+```bash
+dfx new auto_topup
+```
+
+In the backend subfolder, your cargo.toml should be similar to the below
+
+```toml
+//... other attributes
+[dependencies]
+candid = "0.10"
+ic-cdk = "0.15"
+ic-cdk-timers = "0.9" # Feel free to remove this dependency if you don't need timers
+ic-ledger-types = "0.12.0"
+serde = "1"
+```
+
+## Step 2
+
+add a module call types.rs, this module will contain our types
+
+```rust
+use candid::{CandidType, Deserialize, Nat, Principal};
+use ic_ledger_types::BlockIndex;
+
+pub type NotifyTopUpResult = Result<Nat, NotifyError>;
+#[derive(CandidType, Deserialize, Debug)]
+pub enum NotifyError {
+    Refunded {
+        reason: String,
+        block_index: Option<BlockIndex>,
+    },
+    Processing,
+    TransactionTooOld(BlockIndex),
+    InvalidTransaction(String),
+    Other {
+        error_code: u64,
+        error_message: String,
+    },
+}
+
+#[derive(CandidType)]
+pub struct NotifyTopUpArg {
+    pub block_index: BlockIndex,
+    pub canister_id: Principal,
+}
+```
+
+Your [Lib.rs](http://Lib.rs) should have something similar to this
+
+```rust
+use candid::{Nat, Principal};
+use ic_cdk::{api::canister_balance, call, id};
+use ic_ledger_types::{transfer, AccountIdentifier, Memo, Subaccount, Tokens, TransferArgs};
+use types::{NotifyTopUpArg, NotifyTopUpResult};
+pub static MEMO_TOP_UP_CANISTER: Memo = Memo(1347768404_u64);
+mod types;
+pub static ICP_TRANSACTION_FEE: Tokens = Tokens::from_e8s(10000);
+
+#[ic_cdk::query]
+fn greet(name: String) -> String {
+    format!("Hello, {}!", name)
+}
+
+#[ic_cdk::query]
+async fn update_func() {
+    // After computation and business logic
+    let cycles = canister_balance();
+    
+    //carry out checks
+    if cycles <= 2_000_000_000_000 {
+        // using 1 as 1 ICP, must be multiplied by 10^8
+        let icp_amount: u64 = 1 * 100_000_000;
+        mint_cycles(Tokens::from_e8s(icp_amount)).await;
+    }
+}
+
+pub async fn mint_cycles(amount: Tokens) -> Result<Nat, String> {
+    let CMC = Principal::from_text("rkp4c-7iaaa-aaaaa-aaaca-cai").unwrap();
+    let transfer_args = TransferArgs {
+        memo: MEMO_TOP_UP_CANISTER,
+        amount,
+        fee: ICP_TRANSACTION_FEE,
+        from_subaccount: None,
+        to: AccountIdentifier::new(
+            &Principal::from_text("rkp4c-7iaaa-aaaaa-aaaca-cai").unwrap(), //cycles minting canister ID
+            &Subaccount::from(id()),
+        ),
+        created_at_time: None,
+    };
+
+    let block_index = transfer(Principal::from_text("ryjl3-tyaaa-aaaaa-aaaba-cai").unwrap(), transfer_args).await.unwrap().map_err(|err| err.to_string())?;
+
+    let topup_args = NotifyTopUpArg {
+        block_index,
+        canister_id: id()
+    };
+
+    let (rslt,): (NotifyTopUpResult,) = call(CMC, "notify_top_up", (topup_args,)).await.unwrap();
+
+    let deposited_cycles = rslt.unwrap();
+
+    Ok(deposited_cycles)
+}
+```
+
+## Code Explanation
+
+In the `update_func`, after computation and business logic `canister_balance` is used to check  for remaining cycles.
+
+we call on `mint_cycles` A function used to mint cycles.
+
+Important codes segment to take note of
+`ryjl3-tyaaa-aaaaa-aaaba-cai` is NNS Ledger Canister Id
+
+`rkp4c-7iaaa-aaaaa-aaaca-cai` is NNS Cycles Minting Canister id
+
+`transfer` function used to transfer tokens from one account to another
+
+`call` ICP CDK API function used to call another canister method. [docs](https://docs.rs/ic-cdk/latest/ic_cdk/fn.call.html)
+
+## Extras
+
+I am working on a [Web3 Freelancer DAO](http://www.aublisk.com) product that tackles fundamental issues of Freelancing, which I would appreciate you checkout and subscribe
+
+## About Me
+
+I am Declan, Rust Engineer, specializing in the ICP and Solana Web3 ecosystem. if i resonate with you. follow me on
+
+[twitter](https://x.com/buildWithDeclan) or [website](https://www.declannadozie.dev/)
+
+See you on the next Part

@@ -139,36 +139,32 @@ function Newsletter() {
 function Resume() {
   let resume = [
     {
-      company: 'Planetaria',
+      company: 'Aublisk',
       title: 'CEO',
       logo: logoPlanetaria,
-      start: '2019',
+      start: '2024',
       end: {
         label: 'Present',
         dateTime: new Date().getFullYear(),
       },
+      url: "www.aublisk.com"
     },
     {
-      company: 'Airbnb',
-      title: 'Product Designer',
+      company: 'Hutsy',
+      title: 'Backend Engineer',
       logo: logoAirbnb,
-      start: '2014',
-      end: '2019',
+      start: '2023',
+      end: '2024',
+      url: "www.hutsy.ca"
     },
     {
-      company: 'Facebook',
-      title: 'iOS Software Engineer',
+      company: 'Satoshi Notes',
+      title: 'Frontent and Backend Engineer',
       logo: logoFacebook,
-      start: '2011',
-      end: '2014',
+      start: '2024',
+      end: '2024',
     },
-    {
-      company: 'Starbucks',
-      title: 'Shift Supervisor',
-      logo: logoStarbucks,
-      start: '2008',
-      end: '2011',
-    },
+    
   ]
 
   return (
@@ -185,9 +181,9 @@ function Resume() {
             </div>
             <dl className="flex flex-auto flex-wrap gap-x-2">
               <dt className="sr-only">Company</dt>
-              <dd className="w-full flex-none text-sm font-medium text-zinc-900 dark:text-zinc-100">
+              <a href={role.url} className="w-full flex-none text-sm font-medium text-zinc-900 dark:text-zinc-100">
                 {role.company}
-              </dd>
+              </a>
               <dt className="sr-only">Role</dt>
               <dd className="text-xs text-zinc-500 dark:text-zinc-400">
                 {role.title}
@@ -251,7 +247,7 @@ export default function Home({ articles }) {
     <>
       <Head>
         <title>
-          Declan Nnadozie - Software designer, Founder, and Web3 developer
+          Declan Nnadozie - Rust Developer
         </title>
         <meta
           name="description"
@@ -261,11 +257,10 @@ export default function Home({ articles }) {
       <Container className="mt-9">
         <div className="max-w-2xl">
           <h1 className="text-4xl font-bold tracking-tight text-zinc-800 dark:text-zinc-100 sm:text-5xl">
-            Software designer, founder, and Web3 PoS Engineer.
+            Web3 Backend Develop on Solana and ICP
           </h1>
           <p className="mt-6 text-base text-zinc-600 dark:text-zinc-400">
-            I’m Declan, a software designer and entrepreneur based in Toronto. I’m currently the backend engineer for <a href='https://www.hutsy.ca' className=' font-medium underline text-indigo-700'>Hutsy</a>, I help startups solve challenging engineering problems
-            with in-house technologies that enable scaling and performance.
+            I’m Declan, an IndieHacker, I simply convert ideas to computer programs.
           </p>
           <div className="mt-6 flex gap-6">
             <SocialLink
@@ -273,21 +268,23 @@ export default function Home({ articles }) {
               aria-label="Follow on Twitter"
               icon={TwitterIcon}
             />
-            {/* <SocialLink
-              href="https://instagram.com"
-              aria-label="Follow on Instagram"
-              icon={InstagramIcon}
+            <SocialLink
+              href="https://www.linkedin.com/in/declan-rust-developer-0a5b09124/"
+              aria-label="Follow on LinkedIn"
+              icon={LinkedInIcon}
             />
             <SocialLink
               href="https://github.com/zedonboy"
               aria-label="Follow on GitHub"
               icon={GitHubIcon}
             />
-            <SocialLink
-              href="https://linkedin.com"
-              aria-label="Follow on LinkedIn"
-              icon={LinkedInIcon}
-            /> */}
+            {/* <SocialLink
+              href="https://instagram.com"
+              aria-label="Follow on Instagram"
+              icon={InstagramIcon}
+            />
+            
+             */}
           </div>
         </div>
       </Container>
