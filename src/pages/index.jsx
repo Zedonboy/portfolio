@@ -141,28 +141,29 @@ function Resume() {
     {
       company: 'Aublisk',
       title: 'CEO',
-      logo: logoPlanetaria,
+      // logo: logoPlanetaria,
       start: '2024',
       end: {
         label: 'Present',
         dateTime: new Date().getFullYear(),
       },
-      url: "www.aublisk.com"
+      url: "https://www.aublisk.com"
     },
     {
       company: 'Hutsy',
       title: 'Backend Engineer',
-      logo: logoAirbnb,
+      // logo: logoAirbnb,
       start: '2023',
       end: '2024',
-      url: "www.hutsy.ca"
+      url: "https://www.hutsy.ca"
     },
     {
       company: 'Satoshi Notes',
       title: 'Frontent and Backend Engineer',
-      logo: logoFacebook,
+      // logo: logoFacebook,
       start: '2024',
       end: '2024',
+      url: "https://satoshinotes.org/"
     },
     
   ]
@@ -257,10 +258,10 @@ export default function Home({ articles }) {
       <Container className="mt-9">
         <div className="max-w-2xl">
           <h1 className="text-4xl font-bold tracking-tight text-zinc-800 dark:text-zinc-100 sm:text-5xl">
-            Web3 Backend Develop on Solana and ICP
+            Web3 and Backend Developer
           </h1>
           <p className="mt-6 text-base text-zinc-600 dark:text-zinc-400">
-            I’m Declan, an IndieHacker, I simply convert ideas to computer programs.
+            I’m Declan, an IndieHacker, a Solana and Internet Computer Protocol(ICP) Developer. I simply convert ideas to computer programs.
           </p>
           <div className="mt-6 flex gap-6">
             <SocialLink
